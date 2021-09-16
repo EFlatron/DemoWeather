@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css"
+        integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ" crossorigin="anonymous">
+    <title>Demo weather forecast from API</title>
+    <style type="text/css">
+        body{
+            background-color:#b3b1b1;
+        }
+        th{
+            width: 80px;
+        }
+
+        #map {
+            height: 500px;
+        }
+        .loader-animator {
+            margin-top: 50px;
+            display: none;
+        }
+
+        .spinner-border {
+            display: none;
+        }
+
+        .layout-content {
+            display: none;
+        }
+        #back-to-top {
+            position: fixed;
+            bottom: 40px;
+            left: 40px;
+            z-index: 9999;
+            width: 32px;
+            height: 32px;
+            text-align: center;
+            line-height: 30px;
+            background: #A9F5F2;
+            color: #444;
+            cursor: pointer;
+            border: 0;
+            border-radius: 2px;
+            text-decoration: none;
+            transition: opacity 0.2s ease-out;
+            opacity: 0;
+        }
+
+        #back-to-top:hover {
+            background: #00FF40;
+        }
+
+        #back-to-top.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <a href="#" id="back-to-top" title="Back to top">&uarr;</a>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="/home">Home page</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/bookmark">Saved weather</a>
+                </li>
+                <li class="nav-item">
+                    <a class ="nav-link" href="/users">User list</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled" style=>Welcome <b>[[${#request.userPrincipal.principal.fullName}]]</b></a>
+                </li>
+                <form th:action="@{/logout}" method="post">
+                    <input type="submit" value="Sign Out" />
+                </form>
+            </ul>
+        </div>
+    </nav>
+    <section class="banner" style="text-align: center;">
+        <br>
+        <br>
+        <br>
+        <h3>WEATHER FORECAST</h3>
+        <h3>Weather data for more than 37000 cities around the world</h3>
+    </section>
+    <div class="container form-search" style="margin-top: 30px; margin-bottom: 20px;">
+        <div class="row">         
+            <div class="col-md-3"></div>
+            <div class="col-md-6">
+                <div class="row">
+                    <input id="input-search" style="margin-bottom: 20px;" class="form-control mr-sm-2 col-12"
+                        type="search" placeholder="Enter a city or location name!" aria-label="Search">
+                    <button style="background-color: #0040FF; color: white;" class="btn my-2 my-sm-0 col-sm-4 col-12"
+                        id="btn-search"><i class="fas fa-search-location"></i> Search</button>
+                    <div class="col-sm-1 col-12"></div>
+                    <button class="btn btn-warning my-2 my-sm-0 col-sm-7 col-12" id="btn-getlocal"><i
+                            class="fas fa-location-arrow"></i> Current position</button>
+                </div>
+            </div>
+            <div class="col-md-3"></div>
+        </div>       
+    </div>
+    <div class="container" style="margin-bottom: 30px;">
+        <div class="row">
+            <div class="col-md-12" style="margin-top: 20px; margin-bottom: 20px;">
+                <p style="text-align: center; font-size: 18px; font-weight: 600;">Or choose a location on the map</p>
+                <div style="margin: auto; width: 139px;">
+                    <button type="button" id="btnToggleMap" class="btn btn-outline-info">Hide/Show map</button>
+                </div>
+            </div>
+            <div class="col-md-12">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+    <div class="d-flex justify-content-center loader-animator" id="spinner-bs4">
+        <div class="spinner-border text-info" style="width: 5rem; height: 5rem;" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+    <div class="container layout-content">
+        <div class="row" style="margin-bottom: 35px;">
+            <div class="col-md-1"></div>
+            <div class="col-md-10 layout-current-temp">
+                <h3 class="city-name" style="text-align: center; color: #40FF00">Weather in Kharkov, UA</h3>
+                <h3 class="city-temp" style="text-align: center;">
+                    <img class="weather-widget__img" src="https://openweathermap.org/img/wn/04n@2x.png"
+                        alt="Weather Kharkov , UA" width="50" height="50">
+                    <p style="display: inline" class="temp-now">28 °C</p>
+                </h3>
+                <table class="table table-bordered table-striped">
+                    <tbody>
+                        <tr>
+                            <th>Wind Speed</th>
+                            <th>Ratio of clouds</th>
+                            <th>Pressure</th>
+                            <th>Humidity</th>
+                            <th>Dawn</th>
+                            <th>Sunset</th>
+                            <th>Coordinates</th>
+                        </tr>
+                        <tr>
+                            <td id="current-wind-speed">5,0 m/s(120)</td>
+                            <td id="current-cloud">New Clouds</td>
+                            <td id="current-pressures">1000 Hpa</td>
+                            <td id="current-humidities">75%</td>
+                            <td id="current-dawn">5:30am</td>
+                            <td id="current-sunset">6:35pm</td>
+                            <td id="current-coordinates">[ 21.02 , 105.84 ]</td>
+                        </tr>
+                    </tbody>
+                </table>             
+            </div>
+            <div class="col-md-1"></div>
+            <div class="col-md-4"></div>
+            <div class="col-md-4" style="text-align: center;">
+                <button type="button" id = "btnBookmark" class="btn btn-danger">Save weather information!</button>
+            </div>
+            <div class="col-md-4"></div>
+        </div>
+       
+        <div class="row">
+            <div class="col-md-1"></div>
+            <div class="col-md-10 layout-forecast-5day">
+                <h3 id="title-forecast-5day"  style="text-align: center;margin-bottom: 25px; color: #40FF00">Weather forecast every 3 hours and 5 days in Kharkov</h3>
+                <table class="table-forecast table">
+                    <tbody id="table-body-forecast5">
+                        <tr>
+                            <td></td>
+                            <td></td>
+                            <td><span>2020-05-11 18:00</span> <img src="https://openweathermap.org/img/wn/10n@2x.png"
+                                    alt=""></td>
+                            <td style="padding-top: 45px;"><span>Temperature: 28 °C, wind speed: 2.52, m/s, cloudiness: 52%, pressure: 1008 hpa</span>
+                            </td>
+                        </tr>                  
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-1"></div>
+        </div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+        integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+        crossorigin="anonymous"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyALyG89PJNAflSxuoi0BFptvSkRdTSjpaA&callback=initMap"
+        async defer></script>
+    <script>
+        var locations, weather, windSpeed, cloud, pressures, coordinates, humidities;
+        var dataLocation = new Object();
+        var dataLocationMap = new Object();
+        function timeStampsToDateTime(timeStamps) {
+            let time = new Date(timeStamps * 1000).toLocaleDateString("vi-UA");
+            let date = new Date(timeStamps * 1000).toLocaleTimeString("vi-UA");
+            let string = time + " " + date;
+            return string;
+        }
+        function temperatureConverter(valNum) {
+            valNum = parseFloat(valNum);
+            return parseInt(valNum - 273.15);
+        }
+        function setValueTableCurrentWeather(result) {
+            locations = result.name;
+            $(".city-name").html('The weather in ' + result.name + ' present');
+            $("#current-wind-speed").html(result.wind.speed + ' m/s, (' + result.wind.deg + ')');
+            windSpeed = result.wind.speed + ' m/s, (' + result.wind.deg + ')';
+            $('.temp-now').html(temperatureConverter(result.main.temp) + ' °C');
+            weather = temperatureConverter(result.main.temp) + ' °C';
+            $("#current-cloud").html(result.clouds.all + ' %');
+            cloud =result.clouds.all + ' %';
+            $("#current-pressures").html(result.main.pressure + ' Hpa');
+            pressures = result.main.pressure + ' Hpa';
+            $("#current-humidities").html(result.main.humidity + ' %');
+            humidities =result.main.humidity + ' %';
+            $("#current-dawn").html(new Date(result.sys.sunrise * 1000).toLocaleTimeString("vi-UA"));
+            $("#current-sunset").html(new Date(result.sys.sunset * 1000).toLocaleTimeString("vi-UA"));
+            $("#current-coordinates").html('[' + result.coord.lat + ',' + result.coord.lon + ']');
+            coordinates = '[' + result.coord.lat + ',' + result.coord.lon + ']';
+            $(".weather-widget__img").attr("src", "https://openweathermap.org/img/wn/" + result.weather[0].icon + "@2x.png");
+            $("#title-layout").html('Current weather forecast in ' + result.name);
+            $("#title-forecast-5day").html('Weather forecast for the next 3 hours and 5 days in ' + result.name);
+        }
+        function addContentHtmlForForecast(array, html) {
+            array.forEach(forecast => {
+                html += '<tr><td></td><td></td><td><span>' + timeStampsToDateTime(forecast.dt) + '</span><img src="https://openweathermap.org/img/wn/' + forecast.weather[0].icon + '@2x.png" alt=""></td><td style="padding-top: 45px;"><span>Temperature: ' + temperatureConverter(forecast.main.temp) + ' °C, wind speed: ' + forecast.wind.speed + ' m/s, humidity: ' + forecast.main.humidity + '%, Pressure: ' + forecast.main.pressure + ' hpa</span></td></tr>';
+            });
+            return html;
+        }              
+        function SendParamPosition(position) {
+            let array = [position.coords.latitude, position.coords.longitude];
+            dataLocation.lat = array[0];
+            dataLocation.lon = array[1];
+        }
+        function showError(error) {
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("You need to allow location access to see the weather in your location!");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Your location could not be determined.");
+                    break;
+                case error.TIMEOUT:
+                    alert("Your request for a position has expired.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("An unknown error.");
+                    break;
+            }
+        }
+        function getMyGeoLocation() {
+            var wpid = navigator.geolocation.getCurrentPosition(SendParamPosition, showError);
+        }
+        function loadNewData() {
+            $(".layout-content").hide();
+            $("#spinner-bs4").show();
+            $('.spinner-border').show();
+            $.ajax({
+                type: 'GET',
+                url: '/current-weather-by-location',
+                data: dataLocationMap,
+                success: result => {
+                    setValueTableCurrentWeather(result);
+                    $('.spinner-border').hide();
+                    $("#spinner-bs4").hide();
+                    $.ajax({
+                        type: 'GET',
+                        url: '/forecast-weather-by-location',
+                        data: dataLocationMap,
+                        success: result => {
+                            let html = "";
+                            let content = addContentHtmlForForecast(result.list, html);
+                            $("#table-body-forecast5").html(content);
+                        }
+                    });
+                    $(".layout-content").show();
+                },
+                error: () => {
+                    $('.spinner-border').hide();
+                    $("#spinner-bs4").hide();
+                }
+            });
+        }
+        $(() => {
+            getMyGeoLocation();
+        });
+        $("#btn-getlocal").click(() => {
+            if (dataLocation.lat != undefined) {
+                $(".layout-content").hide();
+                $("#spinner-bs4").show();
+                $('.spinner-border').show();
+                $.ajax({
+                    type: 'GET',
+                    url: '/current-weather-by-location',
+                    data: dataLocation,
+                    success: result => {
+                        setValueTableCurrentWeather(result);
+                        $('.spinner-border').hide();
+                        $("#spinner-bs4").hide();
+                        $.ajax({
+                            type: 'GET',
+                            url: '/forecast-weather-by-location',
+                            data: dataLocation,
+                            success: result => {
+                                let html = "";
+                                let content = addContentHtmlForForecast(result.list, html);
+                                $("#table-body-forecast5").html(content);
+                            }
+                        });
+                        $(".layout-content").show();
+                    },
+                    error: () => {
+                        $('.spinner-border').hide();
+                        $("#spinner-bs4").hide();
+                    }
+                });
+
+
+            } else {
+                $('.spinner-border').hide();
+                $("#spinner-bs4").hide();
+                alert('Please allow the browser to access your location!');
+            }
+        });
+        $("#btn-search").click(() => {
+            let data1 = new Object();
+            data1.city = $('#input-search').val();
+            if (data1.city != "" || data1.city != null) {
+                $(".layout-content").hide();
+                $("#spinner-bs4").show();
+                $('.spinner-border').show();
+                $.ajax({
+                    type: 'GET',
+                    url: '/current-weather',
+                    data: data1,
+                    success: result => {
+                        if (result.cod == "200") {
+                            setValueTableCurrentWeather(result);
+                            $('.spinner-border').hide();
+                            $("#spinner-bs4").hide();
+                            $.ajax({
+                                type: 'GET',
+                                url: '/forecast-weather',
+                                data: data1,
+                                success: result => {
+                                    let html = "";
+                                    let content = addContentHtmlForForecast(result.list, html);
+                                    $("#table-body-forecast5").html(content);
+                                }
+                            });
+                            $(".layout-content").show();
+                        } else {
+                            $('.spinner-border').hide();
+                            $("#spinner-bs4").hide();
+                            alert("The city or location you just entered could not be found, please check again!");
+                            return;
+                        }
+                    },
+                    error: () => {
+                        $('.spinner-border').hide();
+                        $("#spinner-bs4").hide();
+                        alert("An error occurred, please try again!");
+                    }
+                });
+
+            } else {
+                alert("Please enter the city or location you are looking for!")
+            }
+        });
+    </script>   
+    <script>
+        if ($('#back-to-top').length) {
+            var scrollTrigger = 100, // px
+                backToTop = function () {
+                    var scrollTop = $(window).scrollTop();
+                    if (scrollTop > scrollTrigger) {
+                        $('#back-to-top').addClass('show');
+                    } else {
+                        $('#back-to-top').removeClass('show');
+                    }
+                };
+            backToTop();
+            $(window).on('scroll', function () {
+                backToTop();
+            });
+            $('#back-to-top').on('click', function (e) {
+                e.preventDefault();
+                $('html,body').animate({
+                    scrollTop: 0
+                }, 700);
+            });
+        }
+    </script>
+    <script>
+        var map;
+        function initMap() {
+            var lat1 = 21.03;
+            var lon1 = 105.76;
+            var myLatLng = { lat: lat1, lng: lon1 };
+            let getForecastWindow = new google.maps.InfoWindow({ position: myLatLng });
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: myLatLng,
+                zoom: 12,
+                gestureHandling: 'cooperative'
+            });
+            var marker = new google.maps.Marker({
+                position: myLatLng,
+                map: map
+            });
+            let infoWindow = new google.maps.InfoWindow();
+            // Try HTML5 geolocation.
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    var pos = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    marker.setPosition(pos);
+                    marker.setMap(map);
+                    map.setCenter(pos);
+                    infoWindow.setContent("Your position: (" + pos.lat + ", " + pos.lng + ")");
+                    infoWindow.open(map, marker);
+                }, function () {
+                    handleLocationError(true, marker, map.getCenter());
+                });
+            } else {
+                // Browser doesn't support Geolocation
+                handleLocationError(false, marker, map.getCenter());
+            }
+            map.addListener('click', mapsMouseEvent => {
+                getForecastWindow.close();
+                getForecastWindow = new google.maps.InfoWindow({ position: mapsMouseEvent.latLng });
+                let ContentHtml = '<button type="button" id = "buttonMap" onclick = "loadNewData();"class="btn btn-success">Click to see the weather here</button>'
+                getForecastWindow.setContent(ContentHtml);
+                getForecastWindow.open(map);
+                dataLocationMap.lat = mapsMouseEvent.latLng.lat();
+                dataLocationMap.lon = mapsMouseEvent.latLng.lng();
+            });
+            marker.addListener('click', mapsMouseEvent => {
+                /* let infoWindow = new google.maps.InfoWindow({ position: mapsMouseEvent.latLng }); */
+                infoWindow.close();
+                infoWindow = new google.maps.InfoWindow({ position: mapsMouseEvent.latLng });
+                let Content = "Your position: " + mapsMouseEvent.latLng
+                infoWindow.setContent(Content);
+                infoWindow.open(map, marker);
+            });
+        }
+        function handleLocationError(browserHasGeolocation, marker, pos) {
+            marker.setMap(null);
+        }
+
+    </script>
+    <script type="text/javascript">
+        $('#btnToggleMap').click(() => {
+            $('#map').toggle("medium");
+        });        
+        $('#btnBookmark').click(()=>{
+            let obj = new Object();
+            obj.locations = locations;
+            obj.weather = weather;
+            obj.windSpeed = windSpeed;
+            obj.cloud = cloud;
+            obj.pressures = pressures;
+            obj.humidities = humidities;
+            obj.coordinates = coordinates;
+            $.ajax({
+                url: '/insert-bookmark',
+                type: 'post',
+                data: obj,
+                success: result =>{
+                    alert(result);
+                },
+                error: xhr=>{
+                    alert("An error occurred, please try again!");
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
